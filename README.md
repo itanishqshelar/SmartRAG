@@ -321,7 +321,7 @@ flake8 multimodal_rag/ tests/ examples/
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - [ChromaDB](https://www.trychroma.com/) for vector storage
 - [Sentence Transformers](https://www.sbert.net/) for embeddings
