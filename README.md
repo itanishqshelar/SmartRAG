@@ -2,6 +2,9 @@
 
 A sophisticated RAG (Retrieval-Augmented Generation) system that enables intelligent conversations with documents, images, and audio files through a clean ChatGPT-style interface.
 
+<img width="1919" height="1078" alt="Screenshot 2025-10-18 125810" src="https://github.com/user-attachments/assets/7b413c33-3208-405b-a4f9-b18381807216" />
+
+
 ## 🚀 Quick Start
 
 ```bash
@@ -297,14 +300,6 @@ async def query_endpoint(query: str):
     return {"answer": response.answer, "sources": len(response.sources)}
 ```
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
 ### Development Setup
 
 ```bash
@@ -334,13 +329,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [OpenAI Whisper](https://github.com/openai/whisper) for speech recognition
 - [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) for text extraction
 
-## 📞 Support
-
-- 📧 Email: support@smartrag.com
-- 🐛 Issues: [GitHub Issues](https://github.com/your-repo/smartrag/issues)
-- 📖 Documentation: [Wiki](https://github.com/your-repo/smartrag/wiki)
-- 💬 Discussions: [GitHub Discussions](https://github.com/your-repo/smartrag/discussions)
-
 ---
 
-**SmartRAG** - Intelligent multimodal document understanding for the modern age. 🚀
+**SmartRAG** - Intelligent multimodal document understanding for the modern age. 
