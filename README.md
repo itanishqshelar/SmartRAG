@@ -19,17 +19,17 @@ streamlit run chatbot_app.py
 
 ### **AI/ML Models**
 
-- **Ollama** - Local LLM hosting (Llama 3.1 8B)
+- **Ollama** - Local LLM hosting (Llama 3.1 8B model)
 - **PyTorch** - Deep learning framework
 - **Transformers** - Hugging Face model library
-- **OpenAI Whisper** - Speech-to-text conversion
+- **OpenAI Whisper** - Speech-to-text conversion (base model)
 - **BLIP** - Image captioning (Salesforce/blip-image-captioning-base)
 
 ### **Vector Database & Embeddings**
 
 - **ChromaDB** - Vector storage and similarity search
-- **Sentence Transformers** - Text embeddings
-- **Nomic Embed Text** - Embedding model via Ollama
+- **Nomic Embed Text** - Text embeddings via Ollama (768-dim vectors)
+- **CLIP** - Visual embeddings for images (openai/clip-vit-base-patch32)
 - **FAISS** - Alternative vector search (Facebook AI)
 
 ### **Document Processing**
@@ -111,21 +111,22 @@ The system uses `config.yaml` for configuration:
 
 ```yaml
 models:
-  llm_model: "llama3.1:8b" # Ollama model
-  embedding_model: "nomic-embed-text" # Embedding model
-  vision_model: "Salesforce/blip-image-captioning-base"
-  whisper_model: "base" # Whisper size
+  llm_model: "llama3.1:8b" # Ollama Llama 3.1 8B model
+  embedding_model: "nomic-embed-text" # Nomic text embeddings (768-dim)
+  vision_model: "Salesforce/blip-image-captioning-base" # BLIP for image captioning
+  whisper_model: "base" # Whisper base model for audio
 
 vector_store:
   type: "chromadb"
   persist_directory: "./vector_db"
   collection_name: "traditional_multimodal_documents"
+  embedding_dimension: 768 # Nomic embed text dimension
 
 processing:
   chunk_size: 1000
   chunk_overlap: 200
   max_image_size: [1024, 1024]
-  ocr_enabled: true
+  ocr_enabled: true # Tesseract OCR for images
 ```
 
 ## 🔧 Requirements
@@ -162,15 +163,27 @@ processing:
    streamlit run chatbot_app.py
    ```
 
-## � Architecture
+## 📊 Architecture
 
 ```
 [User Input] → [Streamlit UI] → [RAG System] → [File Processors]
                     ↓                              ↓
-[SQLite DB] ← [ChromaDB] ← [Embeddings] ← [Text Chunks]
-                    ↓
-[Vector Search] → [Context Retrieval] → [Ollama LLM] → [Response]
+                                        [Document: PyPDF2/python-docx]
+                                        [Image: Tesseract OCR + BLIP]
+                                        [Audio: Whisper Transcription]
+                    ↓                              ↓
+[SQLite DB] ← [Text Chunks] → [Nomic Embed Text (Ollama)] → [ChromaDB]
+                                                                ↓
+[Vector Search] → [Context Retrieval] → [Llama 3.1 8B (Ollama)] → [Response]
 ```
+
+### Processing Pipeline
+
+• **Text Documents**: Extracted with PyPDF2/python-docx → Chunked → Embedded with Nomic Embed Text
+• **Images**: OCR with Tesseract + Captioning with BLIP → Combined text → Embedded with Nomic Embed Text  
+• **Audio**: Transcribed with Whisper → Chunked → Embedded with Nomic Embed Text
+• **Storage**: All embeddings stored in ChromaDB (768-dim vectors) for semantic search
+• **Generation**: Retrieved context fed to Llama 3.1 8B via Ollama for response generation
 
 ## 🎮 Usage
 
@@ -230,42 +243,23 @@ coverage report
 
 ### Vector Store Options
 
-**ChromaDB** (Default - Good for development)
+**ChromaDB** (Default - Recommended)
 
 ```yaml
 vector_store:
   type: "chromadb"
-  persist_directory: "./chroma_db"
+  persist_directory: "./vector_db"
   collection_name: "documents"
+  embedding_dimension: 768 # For nomic-embed-text
 ```
 
-**FAISS** (High performance - Good for production)
+**FAISS** (Alternative - High performance)
 
 ```yaml
 vector_store:
   type: "faiss"
   persist_directory: "./faiss_db"
-  embedding_dimension: 384
-```
-
-### Model Configuration
-
-**Lightweight Setup** (Lower resource usage)
-
-```yaml
-models:
-  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
-  llm_model: "microsoft/DialoGPT-small"
-  whisper_model: "tiny"
-```
-
-**High Performance Setup** (Better quality)
-
-```yaml
-models:
-  embedding_model: "sentence-transformers/all-mpnet-base-v2"
-  llm_model: "microsoft/DialoGPT-large"
-  whisper_model: "large"
+  embedding_dimension: 768 # Must match nomic-embed-text
 ```
 
 ## 🚀 Deployment
