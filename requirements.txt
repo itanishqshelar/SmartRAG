@@ -1,0 +1,39 @@
+# Core RAG and ML libraries
+chromadb>=0.4.0
+transformers>=4.35.0  # Updated for LLaVA support
+torch>=2.0.0
+torchvision>=0.15.0
+sentence-transformers>=2.2.0  # Replaces Ollama embeddings
+accelerate>=0.20.0  # For model optimization
+
+# Traditional system requirements
+ollama>=0.1.0  # For Llama 3 7B
+pytesseract>=0.3.10  # For OCR with Tesseract
+opencv-python>=4.8.0  # For image processing
+
+# LLaVA specific requirements
+Pillow>=10.0.0
+requests>=2.31.0
+
+# Document processing
+PyPDF2>=3.0.1
+python-docx>=1.0.0
+pdfplumber>=0.9.0
+python-pptx>=0.6.21
+
+# Audio processing (keeping Whisper)
+openai-whisper>=20231117
+pydub>=0.25.1
+librosa>=0.10.0
+
+# Web interface
+fastapi>=0.104.0
+uvicorn>=0.24.0
+python-multipart>=0.0.6
+streamlit>=1.28.0
+
+# Utilities
+numpy>=1.24.0
+tqdm>=4.65.0
+pyyaml>=6.0.0
+requests>=2.31.0
