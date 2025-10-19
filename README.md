@@ -141,6 +141,23 @@ processing:
 
 ## 🏃‍♂️ Installation
 
+### Option 1: Docker (Recommended) 🐳
+
+```bash
+# Clone the repository
+git clone https://github.com/itanishqshelar/SmartRAG.git
+cd SmartRAG
+
+# Start with Docker Compose
+docker-compose up -d
+
+# Access at http://localhost:8501
+```
+
+See [DOCKER.md](DOCKER.md) for detailed Docker deployment instructions.
+
+### Option 2: Local Installation
+
 1. **Install dependencies:**
 
    ```bash

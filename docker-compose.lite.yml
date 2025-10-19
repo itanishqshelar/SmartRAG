@@ -1,0 +1,36 @@
+# Docker Compose for Lightweight setup (Ollama on host)
+version: '3.8'
+
+services:
+  smartrag-lite:
+    build:
+      context: .
+      dockerfile: Dockerfile.lite
+    container_name: smartrag-lite
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./vector_db:/app/vector_db
+      - ./user_data:/app/user_data
+      - ./temp_uploads:/app/temp_uploads
+      - ./logs:/app/logs
+      - ./file_storage.db:/app/file_storage.db
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G

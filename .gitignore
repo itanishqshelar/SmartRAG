@@ -69,3 +69,7 @@ data/
 *.h5
 *.pkl
 *.pickle
+
+# Docker
+.dockerignore
+docker-compose.override.yml

@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  smartrag:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartrag-app
+    ports:
+      - "8501:8501"  # Streamlit
+      - "11434:11434"  # Ollama
+    volumes:
+      # Persist vector database
+      - ./vector_db:/app/vector_db
+      # Persist user data
+      - ./user_data:/app/user_data
+      # Persist uploaded files
+      - ./temp_uploads:/app/temp_uploads
+      # Persist logs
+      - ./logs:/app/logs
+      # Persist SQLite database
+      - ./file_storage.db:/app/file_storage.db
+      # Ollama models persistence
+      - ollama_models:/root/.ollama
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - OLLAMA_HOST=http://localhost:11434
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    shm_size: '2gb'  # Shared memory for ML models
+    deploy:
+      resources:
+        limits:
+          memory: 8G  # Adjust based on your system
+        reservations:
+          memory: 4G
+
+volumes:
+  ollama_models:
+    driver: local
