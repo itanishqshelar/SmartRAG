@@ -1,0 +1,79 @@
+system:
+  name: SmartRAG System
+  version: 2.0.0
+  offline_mode: true
+  debug: false
+  log_level: INFO
+models:
+  llm_type: !!python/object/apply:config_schema.LLMType
+  - ollama
+  llm_model: llama3.1:8b
+  ollama_host: http://localhost:11434
+  embedding_model: nomic-embed-text
+  embedding_dimension: 768
+  vision_model: Salesforce/blip-image-captioning-base
+  whisper_model: base
+vector_store:
+  type: !!python/object/apply:config_schema.VectorStoreType
+  - chromadb
+  persist_directory: C:\Users\Tanishq\Desktop\oldsmartrag\vector_db
+  collection_name: multimodal_documents
+  embedding_dimension: 768
+  ollama_host: http://localhost:11434
+processing:
+  chunk_size: 1000
+  chunk_overlap: 200
+  max_image_size:
+  - 1024
+  - 1024
+  ocr_enabled: true
+  store_original_images: true
+  image_preprocessing: !!python/object/apply:config_schema.ImagePreprocessing
+  - resize
+  audio_sample_rate: 16000
+  max_audio_duration: 300
+  batch_size: 32
+retrieval:
+  top_k: 5
+  similarity_threshold: 0.7
+  rerank_enabled: false
+generation:
+  max_tokens: 2048
+  temperature: 0.7
+  top_p: 0.9
+  top_k: 50
+  do_sample: true
+  max_new_tokens: 1024
+ui:
+  title: SmartRAG - Multimodal AI Assistant
+  page_icon: "\U0001F916"
+  layout: wide
+  theme: dark
+  show_recent_uploads: true
+  max_upload_size_mb: 200
+storage:
+  data_directory: C:\Users\Tanishq\Desktop\oldsmartrag\data
+  logs_directory: C:\Users\Tanishq\Desktop\oldsmartrag\logs
+  cache_directory: C:\Users\Tanishq\Desktop\oldsmartrag\cache
+  temp_uploads_directory: C:\Users\Tanishq\Desktop\oldsmartrag\temp_uploads
+supported_formats:
+  documents:
+  - .pdf
+  - .docx
+  - .doc
+  - .txt
+  - .md
+  - .rtf
+  images:
+  - .jpg
+  - .jpeg
+  - .png
+  - .bmp
+  - .tiff
+  - .webp
+  audio:
+  - .mp3
+  - .wav
+  - .m4a
+  - .ogg
+  - .flac

@@ -1,17 +1,21 @@
 # Core RAG and ML libraries
 chromadb>=0.4.0
-transformers>=4.35.0  # Updated for LLaVA support
+transformers>=4.35.0  # For BLIP image captioning and model utilities
 torch>=2.0.0
 torchvision>=0.15.0
-sentence-transformers>=2.2.0  # Replaces Ollama embeddings
+sentence-transformers>=2.2.0  # For text embeddings
 accelerate>=0.20.0  # For model optimization
 
+# Configuration management
+pydantic>=2.0.0  # For config validation and schema
+pydantic-settings>=2.0.0  # For environment variable support
+
 # Traditional system requirements
-ollama>=0.1.0  # For Llama 3 7B
+ollama>=0.1.0  # For Llama 3.1 8B local inference
 pytesseract>=0.3.10  # For OCR with Tesseract
 opencv-python>=4.8.0  # For image processing
 
-# LLaVA specific requirements
+# Image and vision
 Pillow>=10.0.0
 requests>=2.31.0
 

@@ -16,6 +16,14 @@ import tempfile
 from multimodal_rag.system import MultimodalRAGSystem
 from multimodal_rag.base import QueryRequest
 
+# Import new configuration system
+try:
+    from config_schema import load_config, SmartRAGConfig
+    USE_NEW_CONFIG = True
+except ImportError:
+    USE_NEW_CONFIG = False
+    print("⚠️  config_schema not found, using legacy configuration")
+
 # Import for speech-to-text
 try:
     import whisper
@@ -1028,11 +1036,22 @@ def transcribe_audio_file(audio_file):
         return None
 
 def get_rag_system():
-    """Get or initialize the RAG system."""
+    """Get or initialize the RAG system with new configuration."""
     if st.session_state.rag_system is None:
         with st.spinner("🔧 Initializing SmartRAG system..."):
             try:
-                st.session_state.rag_system = MultimodalRAGSystem(config_path="config.yaml")
+                # Load and apply environment variable overrides if available
+                if USE_NEW_CONFIG:
+                    # Allow runtime overrides from environment or session state
+                    config = load_config(
+                        config_path="config.yaml",
+                        # Example: can override from session state or env vars
+                    )
+                    st.session_state.rag_system = MultimodalRAGSystem(config_path="config.yaml")
+                    st.info("✅ Using validated configuration schema")
+                else:
+                    st.session_state.rag_system = MultimodalRAGSystem(config_path="config.yaml")
+                
                 st.session_state.system_initialized = True
                 st.success("✅ SmartRAG system initialized successfully!")
             except Exception as e:
@@ -1064,7 +1083,7 @@ def process_uploaded_file(uploaded_file, rag_system):
     try:
         file_type = uploaded_file.type
         
-        # For images, process directly with LLaVA without temp files
+        # For images, process with OCR and BLIP captioning
         if file_type.startswith('image/'):
             try:
                 # Reset file pointer to beginning
@@ -1078,7 +1097,7 @@ def process_uploaded_file(uploaded_file, rag_system):
                 with open(temp_path, "wb") as f:
                     f.write(uploaded_file.getbuffer())
                 
-                # Process image with RAG system (this will store it in vector DB)
+                # Process image with RAG system (OCR + BLIP, stores in vector DB)
                 result = rag_system.ingest_file(temp_path)
                 
                 # Clean up temp file

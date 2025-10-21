@@ -1,27 +1,20 @@
 """
 Main multimodal RAG system implementation.
-Simple traditional s            logger.info(f"Ingesting file: {file_path}")
-            
-            # Determine processor based on file type
-            if self.document_processor and self.document_processor.can_process(file_path):
-                result = self.document_processor.process_file(file_path)
-            elif self.image_processor and self.image_processor.can_process(file_path):
-                result = self.image_processor.process_file(file_path)
-            elif self.audio_processor and self.audio_processor.can_process(file_path):
-                result = self.audio_processor.process_file(file_path)
-            else:
-                return ProcessingResult(
-                    chunks=[],
-                    success=False,
-                    error_message=f"Unsupported file type: {file_path.suffix}"
-                )ma + basic processors.
+Simple traditional system using Ollama + basic processors.
 """
 
 import logging
 import time
-import yaml
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Union
+
+# Import new config schema
+try:
+    from config_schema import SmartRAGConfig, ConfigLoader, load_config
+    USE_NEW_CONFIG = True
+except ImportError:
+    USE_NEW_CONFIG = False
+    logging.warning("config_schema not found, using legacy config loading")
 
 from .base import (
     QueryRequest, QueryResponse, DocumentChunk, ProcessingResult, OllamaLLM
@@ -33,20 +26,27 @@ logger = logging.getLogger(__name__)
 class SimpleRAGSystem:
     """Simple RAG system using available components."""
     
-    def __init__(self, config: Dict[str, Any]):
-        self.config = config
+    def __init__(self, config: Union[Dict[str, Any], SmartRAGConfig]):
+        # Handle both new SmartRAGConfig and legacy dict
+        if USE_NEW_CONFIG and isinstance(config, SmartRAGConfig):
+            self.config = config.to_dict()
+            self._typed_config = config
+        else:
+            self.config = config
+            self._typed_config = None
+        
         logger.info("Initializing Simple RAG System...")
         
         try:
             # Initialize LLM
-            self.llm = OllamaLLM(config)
+            self.llm = OllamaLLM(self.config)
             logger.info("LLM initialized")
             
             # Initialize processors
             from .processors import DocumentProcessorManager, ImageProcessorManager, AudioProcessorManager
-            self.document_processor = DocumentProcessorManager(config)
-            self.image_processor = ImageProcessorManager(config)
-            self.audio_processor = AudioProcessorManager(config)
+            self.document_processor = DocumentProcessorManager(self.config)
+            self.image_processor = ImageProcessorManager(self.config)
+            self.audio_processor = AudioProcessorManager(self.config)
             logger.info("Processors initialized")
             
             # Initialize vector store
@@ -295,18 +295,36 @@ Answer:"""
 
 
 class MultimodalRAGSystem:
-    """Main multimodal RAG system - simplified version."""
+    """Main multimodal RAG system - simplified version with new config system."""
     
-    def __init__(self, config_path: Optional[Union[str, Path]] = None, config_dict: Optional[Dict[str, Any]] = None):
-        """Initialize the multimodal RAG system."""
+    def __init__(
+        self, 
+        config_path: Optional[Union[str, Path]] = None, 
+        config_dict: Optional[Dict[str, Any]] = None,
+        **overrides
+    ):
+        """
+        Initialize the multimodal RAG system.
         
-        # Load configuration
-        if config_dict:
-            config = config_dict
-        elif config_path:
-            config = self._load_config(config_path)
+        Args:
+            config_path: Path to config.yaml file
+            config_dict: Dictionary with config values (legacy)
+            **overrides: Explicit config overrides (e.g., models__llm_model="llama2:7b")
+        """
+        
+        # Load configuration using new single source of truth system
+        if USE_NEW_CONFIG:
+            try:
+                # Use new config loader with priority chain
+                typed_config = load_config(config_path=config_path, **overrides)
+                config = typed_config.to_dict()
+                logger.info("✅ Using validated configuration schema")
+            except Exception as e:
+                logger.warning(f"Failed to load with new config system: {e}, falling back to legacy")
+                config = self._load_config_legacy(config_path, config_dict)
         else:
-            config = self._get_default_config()
+            # Fallback to legacy config loading
+            config = self._load_config_legacy(config_path, config_dict)
         
         # Try enhanced system first, fallback to simple system
         logger.info("Initializing multimodal RAG system...")
@@ -337,8 +355,25 @@ class MultimodalRAGSystem:
                 self._system = None
                 self.system_type = "none"
     
+    def _load_config_legacy(
+        self, 
+        config_path: Optional[Union[str, Path]], 
+        config_dict: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Legacy configuration loading (backward compatibility)."""
+        import yaml
+        
+        if config_dict:
+            return config_dict
+        elif config_path:
+            return self._load_config(config_path)
+        else:
+            return self._get_default_config()
+    
     def _load_config(self, config_path: Union[str, Path]) -> Dict[str, Any]:
-        """Load configuration from YAML file."""
+        """Load configuration from YAML file (legacy method)."""
+        import yaml
+        
         try:
             with open(config_path, 'r', encoding='utf-8') as file:
                 config = yaml.safe_load(file)
@@ -349,38 +384,53 @@ class MultimodalRAGSystem:
             return self._get_default_config()
     
     def _get_default_config(self) -> Dict[str, Any]:
-        """Get default configuration (LLaVA-first)."""
+        """Get default configuration matching config.yaml defaults."""
         return {
             'system': {
-                'name': 'SmartRAG LLaVA System',
+                'name': 'SmartRAG System',
                 'offline_mode': True,
-                'debug': False
+                'debug': False,
+                'log_level': 'INFO'
             },
             'models': {
-                'llm_type': 'llava',
-                'llava_model': 'llava-hf/llava-1.5-7b-hf',
-                'embedding_model': 'nomic-embed-text'
+                'llm_type': 'ollama',
+                'llm_model': 'llama3.1:8b',
+                'ollama_host': 'http://localhost:11434',
+                'embedding_model': 'nomic-embed-text',
+                'embedding_dimension': 768,
+                'vision_model': 'Salesforce/blip-image-captioning-base',
+                'whisper_model': 'base'
             },
             'vector_store': {
                 'type': 'chromadb',
                 'persist_directory': './vector_db',
-                'collection_name': 'llava_documents',
-                'embedding_dimension': 384
+                'collection_name': 'multimodal_documents',
+                'embedding_dimension': 768,
+                'ollama_host': 'http://localhost:11434'
             },
             'processing': {
                 'chunk_size': 1000,
                 'chunk_overlap': 200,
-                'max_image_size': [512, 512],
-                'ocr_enabled': False,  # LLaVA processes images natively
-                'batch_size': 16
+                'max_image_size': [1024, 1024],
+                'ocr_enabled': True,
+                'batch_size': 32,
+                'store_original_images': True,
+                'image_preprocessing': 'resize',
+                'audio_sample_rate': 16000,
+                'max_audio_duration': 300
             },
             'retrieval': {
                 'top_k': 5,
-                'similarity_threshold': 0.7
+                'similarity_threshold': 0.7,
+                'rerank_enabled': False
             },
             'generation': {
                 'max_tokens': 2048,
-                'temperature': 0.7
+                'temperature': 0.7,
+                'top_p': 0.9,
+                'top_k': 50,
+                'do_sample': True,
+                'max_new_tokens': 1024
             }
         }
     

@@ -1,8 +1,9 @@
 system:
-  name: "SmartRAG Traditional System"
+  name: "SmartRAG System"
   version: "2.0.0"
   offline_mode: true
   debug: false
+  log_level: "INFO"
 
 models:
   # LLM for response generation (offline with Ollama)
@@ -12,19 +13,19 @@ models:
 
   # Text embedding model (using Ollama's embedding model)
   embedding_model: "nomic-embed-text"
+  embedding_dimension: 768 # nomic-embed-text produces 768-dimensional vectors
 
   # Vision model for image understanding (BLIP)
   vision_model: "Salesforce/blip-image-captioning-base"
 
-  # Speech-to-text model (keeping audio processing)
   # Speech-to-text model (keeping audio processing)
   whisper_model: "base"
 
 vector_store:
   type: "chromadb"
   persist_directory: "./vector_db"
-  collection_name: "traditional_multimodal_documents"
-  embedding_dimension: 768 # Updated for nomic-embed-text model
+  collection_name: "multimodal_documents"
+  embedding_dimension: 768 # Must match models.embedding_dimension
   ollama_host: "http://localhost:11434"
 
 processing:
@@ -51,12 +52,21 @@ retrieval:
   rerank_enabled: false
 
 generation:
-  # Traditional LLM generation parameters
+  # LLM generation parameters
   max_tokens: 2048
   temperature: 0.7
   top_p: 0.9
+  top_k: 50
   do_sample: true
-  max_new_tokens: 1024 # For traditional LLM responses
+  max_new_tokens: 1024
+
+ui:
+  title: "SmartRAG - Multimodal AI Assistant"
+  page_icon: "🤖"
+  layout: "wide"
+  theme: "dark"
+  show_recent_uploads: true
+  max_upload_size_mb: 200
 
 supported_formats:
   documents: [".pdf", ".docx", ".doc", ".txt", ".md", ".rtf"]
@@ -67,3 +77,4 @@ storage:
   data_directory: "./data"
   logs_directory: "./logs"
   cache_directory: "./cache"
+  temp_uploads_directory: "./temp_uploads"

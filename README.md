@@ -4,7 +4,6 @@ A sophisticated RAG (Retrieval-Augmented Generation) system that enables intelli
 
 <img width="1919" height="1078" alt="Screenshot 2025-10-18 125810" src="https://github.com/user-attachments/assets/7b413c33-3208-405b-a4f9-b18381807216" />
 
-
 ## 🚀 Quick Start
 
 ```bash
@@ -110,27 +109,61 @@ smartrag/
 
 ## ⚙️ Configuration
 
-The system uses `config.yaml` for configuration:
+SmartRAG uses a **single source of truth** configuration system with Pydantic validation.
+
+### Quick Configuration
+
+The system uses `config.yaml` with priority chain:
+
+```
+CLI Overrides > Environment Variables > config.yaml > Defaults
+```
+
+**Example `config.yaml`:**
 
 ```yaml
+system:
+  name: "SmartRAG System"
+  debug: false
+  log_level: "INFO"
+
 models:
-  llm_model: "llama3.1:8b" # Ollama Llama 3.1 8B model
-  embedding_model: "nomic-embed-text" # Nomic text embeddings (768-dim)
-  vision_model: "Salesforce/blip-image-captioning-base" # BLIP for image captioning
-  whisper_model: "base" # Whisper base model for audio
+  llm_model: "llama3.1:8b" # Ollama Llama 3.1 8B
+  embedding_model: "nomic-embed-text" # 768-dim embeddings
+  vision_model: "Salesforce/blip-image-captioning-base"
+  whisper_model: "base"
 
 vector_store:
   type: "chromadb"
-  persist_directory: "./vector_db"
-  collection_name: "traditional_multimodal_documents"
-  embedding_dimension: 768 # Nomic embed text dimension
+  embedding_dimension: 768 # Must match embedding model
 
 processing:
   chunk_size: 1000
   chunk_overlap: 200
-  max_image_size: [1024, 1024]
-  ocr_enabled: true # Tesseract OCR for images
+  ocr_enabled: true # Tesseract OCR
 ```
+
+### Environment Variable Overrides
+
+```bash
+export SMARTRAG_LLM_MODEL=llama2:7b
+export SMARTRAG_TEMPERATURE=0.5
+export SMARTRAG_DEBUG=true
+```
+
+### Programmatic Overrides
+
+```python
+from config_schema import load_config
+
+config = load_config(
+    "config.yaml",
+    models__llm_model="llama2:7b",
+    generation__temperature=0.5
+)
+```
+
+📖 **See [CONFIG.md](CONFIG.md) for comprehensive configuration documentation**
 
 ## 🔧 Requirements
 
@@ -348,4 +381,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**SmartRAG** - Intelligent multimodal document understanding for the modern age. 
+**SmartRAG** - Intelligent multimodal document understanding for the modern age.
