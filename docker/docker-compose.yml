@@ -3,23 +3,23 @@ version: '3.8'
 services:
   smartrag:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: smartrag-app
     ports:
       - "8501:8501"  # Streamlit
       - "11434:11434"  # Ollama
     volumes:
       # Persist vector database
-      - ./vector_db:/app/vector_db
+      - ../vector_db:/app/vector_db
       # Persist user data
-      - ./user_data:/app/user_data
+      - ../user_data:/app/user_data
       # Persist uploaded files
-      - ./temp_uploads:/app/temp_uploads
+      - ../temp_uploads:/app/temp_uploads
       # Persist logs
-      - ./logs:/app/logs
+      - ../logs:/app/logs
       # Persist SQLite database
-      - ./file_storage.db:/app/file_storage.db
+      - ../file_storage.db:/app/file_storage.db
       # Ollama models persistence
       - ollama_models:/root/.ollama
     environment:

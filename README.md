@@ -182,12 +182,13 @@ git clone https://github.com/itanishqshelar/SmartRAG.git
 cd SmartRAG
 
 # Start with Docker Compose
+cd docker
 docker-compose up -d
 
 # Access at http://localhost:8501
 ```
 
-See [DOCKER.md](DOCKER.md) for detailed Docker deployment instructions.
+See [docker/README.md](docker/README.md) for detailed Docker deployment instructions.
 
 ### Option 2: Local Installation
 

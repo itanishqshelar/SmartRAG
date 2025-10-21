@@ -4,17 +4,17 @@ version: '3.8'
 services:
   smartrag-lite:
     build:
-      context: .
-      dockerfile: Dockerfile.lite
+      context: ..
+      dockerfile: docker/Dockerfile.lite
     container_name: smartrag-lite
     ports:
       - "8501:8501"
     volumes:
-      - ./vector_db:/app/vector_db
-      - ./user_data:/app/user_data
-      - ./temp_uploads:/app/temp_uploads
-      - ./logs:/app/logs
-      - ./file_storage.db:/app/file_storage.db
+      - ../vector_db:/app/vector_db
+      - ../user_data:/app/user_data
+      - ../temp_uploads:/app/temp_uploads
+      - ../logs:/app/logs
+      - ../file_storage.db:/app/file_storage.db
     environment:
       - STREAMLIT_SERVER_PORT=8501
       - STREAMLIT_SERVER_ADDRESS=0.0.0.0
