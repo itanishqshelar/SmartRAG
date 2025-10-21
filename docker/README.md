@@ -38,10 +38,21 @@ docker-compose logs -f
 
 **First Run Notes:**
 
-- Initial startup takes 10-15 minutes (downloading models)
-- Llama 3.1 8B model: ~4.7GB
-- Nomic Embed Text model: ~274MB
-- Models are cached in Docker volume for subsequent runs
+- Initial Docker build takes 10-15 minutes (downloading & caching models)
+- Container startup takes 8-10 minutes first time (downloading Ollama models)
+- Subsequent runs start in ~30 seconds
+
+**Models Downloaded During Build:**
+
+- BLIP Image Captioning: ~1.0GB (cached in image)
+- Whisper Base: ~140MB (cached in image)
+
+**Models Downloaded on First Run:**
+
+- Llama 3.1 8B model: ~4.7GB (cached in Docker volume)
+- Nomic Embed Text model: ~274MB (cached in Docker volume)
+
+**Total Storage:** ~7-8GB for Docker image + ~5GB for Ollama models = **~13GB**
 
 ### Option 2: Lightweight Deployment
 
@@ -62,7 +73,65 @@ docker-compose -f docker-compose.lite.yml up -d
 
 ---
 
-## 🔧 Configuration
+## � Model Caching Strategy
+
+SmartRAG uses multiple AI models that are pre-downloaded to ensure fast startup and offline capability.
+
+### Models Cached During Docker Build
+
+These models are downloaded once during `docker build` and stored in the Docker image:
+
+1. **BLIP Image Captioning** (`Salesforce/blip-image-captioning-base`)
+
+   - Size: ~1.0GB
+   - Purpose: Generate captions for images
+   - Location: `~/.cache/huggingface/` (inside image)
+
+2. **Whisper Base** (OpenAI speech-to-text)
+   - Size: ~140MB
+   - Purpose: Audio transcription
+   - Location: `~/.cache/whisper/` (inside image)
+
+### Models Downloaded on First Container Run
+
+These models are downloaded when you first start the container and cached in Docker volumes:
+
+3. **Llama 3.1 8B** (via Ollama)
+
+   - Size: ~4.7GB
+   - Purpose: Main language model for RAG
+   - Location: `ollama_models` Docker volume
+
+4. **Nomic Embed Text** (via Ollama)
+   - Size: ~274MB
+   - Purpose: Text embeddings for semantic search
+   - Location: `ollama_models` Docker volume
+
+### Benefits
+
+✅ **Faster Startup** - No Hugging Face downloads during app runtime  
+✅ **Offline Ready** - All models cached after initial setup  
+✅ **Predictable Builds** - Same model versions every time  
+✅ **Better UX** - No waiting for downloads during image processing
+
+### Verification
+
+The startup script automatically verifies all models are available:
+
+```bash
+# During container startup you'll see:
+Starting Ollama service...
+Waiting for Ollama to start...
+Pulling Llama 3.1 8B model...
+Pulling Nomic Embed Text model...
+Verifying Hugging Face models...
+BLIP model cached successfully
+Starting SmartRAG application...
+```
+
+---
+
+## �🔧 Configuration
 
 ### Environment Variables
 
@@ -140,6 +209,35 @@ docker run -d \
 - **RAM**: 16GB
 - **Disk**: 50GB free space (for multiple models and data)
 - **GPU**: Optional (for faster inference)
+
+### Storage Breakdown
+
+**Docker Image Size:**
+
+```
+Base Python 3.10:          ~900 MB
+System Dependencies:       ~300 MB
+Python Packages:           ~800 MB
+BLIP Model (cached):      ~1000 MB
+Whisper Model (cached):    ~140 MB
+--------------------------------
+Total Image Size:         ~3.1 GB
+```
+
+**Runtime Storage (Docker Volumes):**
+
+```
+Llama 3.1 8B:             ~4.7 GB
+Nomic Embed Text:         ~274 MB
+ChromaDB Vectors:         ~100 MB per 1000 documents
+User Uploads:             Varies
+Logs:                     ~10 MB
+--------------------------------
+Minimum Runtime:          ~5.1 GB
+Recommended:              ~10 GB
+```
+
+**Total Required:** ~13GB minimum, ~20GB recommended
 
 ### Memory Allocation
 

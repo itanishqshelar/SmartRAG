@@ -26,6 +26,17 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Pre-download Hugging Face models to avoid runtime downloads
+RUN python3 -c "from transformers import BlipProcessor, BlipForConditionalGeneration; \
+    processor = BlipProcessor.from_pretrained('Salesforce/blip-image-captioning-base'); \
+    model = BlipForConditionalGeneration.from_pretrained('Salesforce/blip-image-captioning-base'); \
+    print('BLIP model cached successfully')"
+
+# Pre-download Whisper model
+RUN python3 -c "import whisper; \
+    model = whisper.load_model('base'); \
+    print('Whisper model cached successfully')"
+
 # Copy application code
 COPY . .
 
@@ -42,22 +53,22 @@ EXPOSE 11434
 RUN echo '#!/bin/bash\n\
     set -e\n\
     \n\
-    # Start Ollama service in background\n\
+    echo "Starting Ollama service..."\n\
     ollama serve &\n\
     OLLAMA_PID=$!\n\
     \n\
-    # Wait for Ollama to be ready\n\
     echo "Waiting for Ollama to start..."\n\
     sleep 5\n\
     \n\
-    # Pull required models\n\
     echo "Pulling Llama 3.1 8B model..."\n\
-    ollama pull llama3.1:8b || echo "Failed to pull llama3.1:8b"\n\
+    ollama pull llama3.1:8b || echo "Model already exists or pull failed"\n\
     \n\
     echo "Pulling Nomic Embed Text model..."\n\
-    ollama pull nomic-embed-text || echo "Failed to pull nomic-embed-text"\n\
+    ollama pull nomic-embed-text || echo "Model already exists or pull failed"\n\
     \n\
-    # Start Streamlit\n\
+    echo "Verifying Hugging Face models..."\n\
+    python3 -c "from transformers import BlipProcessor; BlipProcessor.from_pretrained('"'"'Salesforce/blip-image-captioning-base'"'"')" || echo "BLIP model check failed"\n\
+    \n\
     echo "Starting SmartRAG application..."\n\
     streamlit run chatbot_app.py --server.port=8501 --server.address=0.0.0.0\n\
     ' > /app/start.sh && chmod +x /app/start.sh

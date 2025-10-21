@@ -21,6 +21,17 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Pre-download Hugging Face models to avoid runtime downloads
+RUN python3 -c "from transformers import BlipProcessor, BlipForConditionalGeneration; \
+    processor = BlipProcessor.from_pretrained('Salesforce/blip-image-captioning-base'); \
+    model = BlipForConditionalGeneration.from_pretrained('Salesforce/blip-image-captioning-base'); \
+    print('BLIP model cached successfully')"
+
+# Pre-download Whisper model
+RUN python3 -c "import whisper; \
+    model = whisper.load_model('base'); \
+    print('Whisper model cached successfully')"
+
 # Copy application code
 COPY . .
 
