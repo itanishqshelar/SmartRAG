@@ -8,7 +8,7 @@ A sophisticated RAG (Retrieval-Augmented Generation) system that enables intelli
 
 ```bash
 # Start the application
-streamlit run chatbot_app.py
+streamlit run start.py
 ```
 
 ## 🏗️ Tech Stack
