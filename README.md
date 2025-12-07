@@ -50,7 +50,7 @@ docker-compose up -d
 
 ## Architecture
 
-![smartrag-architecture](image.png)
+<img width="1600" height="676" alt="image" src="https://github.com/user-attachments/assets/b4e96e9f-d797-409e-be6b-ceb295e91615" />
 
 ## Installation
 
