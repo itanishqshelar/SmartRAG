@@ -1,4 +1,4 @@
-# SmartRAG - Multimodal Document Intelligence
+# SmartRAG - Intelligent Multimodal RAG System
 
 A production-ready RAG system enabling intelligent conversations with documents, images, and audio files. Built with local-first AI models for complete privacy and offline operation.
 
@@ -211,7 +211,7 @@ flake8 multimodal_rag/ tests/
 
 ## Performance
 
-- **Image size**: 4.2GB (35% reduction via multi-stage builds)
+- **Image size**: 4.2GB 
 - **Memory**: 4-8GB recommended
 - **CPU**: 2-4 cores recommended
 - **Startup time**: ~90s (includes model downloads)
