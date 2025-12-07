@@ -1,0 +1,186 @@
+# Production Docker Compose with full stack
+# Includes: SmartRAG, PostgreSQL, Redis, Nginx
+version: '3.8'
+
+services:
+  # Main application
+  smartrag:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    image: smartrag:production
+    container_name: smartrag-prod
+    expose:
+      - "8501"
+      - "11434"
+    volumes:
+      - smartrag_vector_db:/app/vector_db
+      - smartrag_user_data:/app/user_data
+      - smartrag_uploads:/app/temp_uploads
+      - smartrag_logs:/app/logs
+      - ollama_models:/home/smartrag/.ollama
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - OLLAMA_HOST=http://localhost:11434
+      - PYTHONUNBUFFERED=1
+      - MAX_FILE_SIZE_MB=50
+      # Database connection (if using PostgreSQL)
+      # - DATABASE_URL=postgresql://smartrag:${DB_PASSWORD}@postgres:5432/smartrag
+      # Redis cache (if using Redis)
+      # - REDIS_URL=redis://redis:6379/0
+    restart: unless-stopped
+    healthcheck:
+      test: |
+        curl -f http://localhost:8501/_stcore/health && \
+        curl -f http://localhost:11434/api/tags > /dev/null || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    shm_size: '2gb'
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - smartrag-prod-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:15-alpine
+    container_name: smartrag-postgres
+    environment:
+      - POSTGRES_DB=smartrag
+      - POSTGRES_USER=smartrag
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-changeme_in_production}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=en_US.UTF-8 --lc-ctype=en_US.UTF-8
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartrag"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - smartrag-prod-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis cache
+  redis:
+    image: redis:7-alpine
+    container_name: smartrag-redis
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 1gb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD:-changeme_in_production}
+    volumes:
+      - redis_data:/data
+    expose:
+      - "6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - smartrag-prod-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: smartrag-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      # Uncomment for SSL certificates
+      # - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - smartrag
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - smartrag-prod-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: Prometheus for monitoring
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: smartrag-prometheus
+  #   volumes:
+  #     - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #     - prometheus_data:/prometheus
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #     - '--storage.tsdb.path=/prometheus'
+  #   expose:
+  #     - "9090"
+  #   restart: unless-stopped
+  #   networks:
+  #     - smartrag-prod-network
+
+volumes:
+  ollama_models:
+    driver: local
+  smartrag_vector_db:
+    driver: local
+  smartrag_user_data:
+    driver: local
+  smartrag_uploads:
+    driver: local
+  smartrag_logs:
+    driver: local
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  # prometheus_data:
+  #   driver: local
+
+networks:
+  smartrag-prod-network:
+    driver: bridge

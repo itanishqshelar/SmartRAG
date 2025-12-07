@@ -1,4 +1,5 @@
 # Docker Compose for Lightweight setup (Ollama on host)
+# Optimized for production with security hardening
 version: '3.8'
 
 services:
@@ -6,31 +7,68 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.lite
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    image: smartrag:lite
     container_name: smartrag-lite
     ports:
       - "8501:8501"
     volumes:
-      - ../vector_db:/app/vector_db
-      - ../user_data:/app/user_data
-      - ../temp_uploads:/app/temp_uploads
-      - ../logs:/app/logs
-      - ../file_storage.db:/app/file_storage.db
+      # Use named volumes for better management
+      - smartrag_lite_vector_db:/app/vector_db
+      - smartrag_lite_user_data:/app/user_data
+      - smartrag_lite_uploads:/app/temp_uploads
+      - smartrag_lite_logs:/app/logs
+      - smartrag_lite_db:/app/db
     environment:
       - STREAMLIT_SERVER_PORT=8501
       - STREAMLIT_SERVER_ADDRESS=0.0.0.0
       - OLLAMA_HOST=http://host.docker.internal:11434
+      - PYTHONUNBUFFERED=1
+      - MAX_FILE_SIZE_MB=50
+      # Optional: Add custom config
+      # - SMARTRAG_LLM_MODEL=llama3.1:8b
+      # - SMARTRAG_TEMPERATURE=0.7
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      test: |
+        curl -f http://localhost:8501/_stcore/health || exit 1
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 40s
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:
+          cpus: '2'
           memory: 4G
         reservations:
+          cpus: '1'
           memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - smartrag-lite-network
+
+volumes:
+  smartrag_lite_vector_db:
+    driver: local
+  smartrag_lite_user_data:
+    driver: local
+  smartrag_lite_uploads:
+    driver: local
+  smartrag_lite_logs:
+    driver: local
+  smartrag_lite_db:
+    driver: local
+
+networks:
+  smartrag-lite-network:
+    driver: bridge

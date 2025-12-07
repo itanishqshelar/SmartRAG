@@ -1,12 +1,47 @@
 # Lightweight Dockerfile for SmartRAG (without Ollama in container)
 # Use this if you want to run Ollama separately on the host
+# Optimized with multi-stage build and security hardening
 
+# ============================================
+# Stage 1: Builder
+# ============================================
+FROM python:3.10-slim as builder
+
+WORKDIR /build
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Pre-download models
+RUN mkdir -p /build/.cache/huggingface
+ENV HF_HOME=/build/.cache/huggingface
+RUN python3 -c "from transformers import BlipProcessor, BlipForConditionalGeneration, CLIPProcessor, CLIPModel; \
+    BlipProcessor.from_pretrained('Salesforce/blip-image-captioning-base'); \
+    BlipForConditionalGeneration.from_pretrained('Salesforce/blip-image-captioning-base'); \
+    CLIPProcessor.from_pretrained('openai/clip-vit-base-patch32'); \
+    CLIPModel.from_pretrained('openai/clip-vit-base-patch32'); \
+    print('✓ Models cached')"
+
+RUN python3 -c "import whisper; whisper.load_model('base'); print('✓ Whisper cached')"
+
+# ============================================
+# Stage 2: Runtime
+# ============================================
 FROM python:3.10-slim
 
-WORKDIR /app
+LABEL maintainer="SmartRAG Team"
+LABEL version="1.0-lite"
+LABEL description="Lightweight SmartRAG (Ollama on host)"
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install runtime system dependencies only
+RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
     tesseract-ocr-eng \
     ffmpeg \
@@ -15,40 +50,60 @@ RUN apt-get update && apt-get install -y \
     libxrender-dev \
     libgomp1 \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    ca-certificates \
+    tini \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# Copy requirements and install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Create non-root user
+RUN groupadd -r smartrag --gid=1000 && \
+    useradd -r -g smartrag --uid=1000 --create-home --shell /bin/bash smartrag
 
-# Pre-download Hugging Face models to avoid runtime downloads
-RUN python3 -c "from transformers import BlipProcessor, BlipForConditionalGeneration; \
-    processor = BlipProcessor.from_pretrained('Salesforce/blip-image-captioning-base'); \
-    model = BlipForConditionalGeneration.from_pretrained('Salesforce/blip-image-captioning-base'); \
-    print('BLIP model cached successfully')"
+WORKDIR /app
 
-# Pre-download Whisper model
-RUN python3 -c "import whisper; \
-    model = whisper.load_model('base'); \
-    print('Whisper model cached successfully')"
+# Copy packages and models from builder
+COPY --from=builder --chown=smartrag:smartrag /root/.local /home/smartrag/.local
+COPY --from=builder --chown=smartrag:smartrag /build/.cache /home/smartrag/.cache
+
+ENV PATH=/home/smartrag/.local/bin:$PATH
+ENV HF_HOME=/home/smartrag/.cache/huggingface
+ENV TRANSFORMERS_CACHE=/home/smartrag/.cache/huggingface
 
 # Copy application code
-COPY . .
+COPY --chown=smartrag:smartrag . .
 
-# Create necessary directories
-RUN mkdir -p vector_db temp_uploads user_data logs data
+# Create necessary directories with proper permissions
+RUN mkdir -p vector_db temp_uploads user_data logs data && \
+    chown -R smartrag:smartrag vector_db temp_uploads user_data logs data
 
 # Expose Streamlit port
 EXPOSE 8501
 
 # Set environment variables
-ENV STREAMLIT_SERVER_PORT=8501
-ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
-ENV OLLAMA_HOST=http://host.docker.internal:11434
+ENV STREAMLIT_SERVER_PORT=8501 \
+    STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
+    STREAMLIT_SERVER_HEADLESS=true \
+    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false \
+    OLLAMA_HOST=http://host.docker.internal:11434 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    MAX_FILE_SIZE_MB=50 \
+    MAX_UPLOAD_SIZE=52428800
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+# Switch to non-root user
+USER smartrag
+
+# Health check with Ollama connectivity test
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
-# Run Streamlit directly
-CMD ["streamlit", "run", "chatbot_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# Use tini for proper signal handling
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
+# Run Streamlit with production settings
+CMD ["streamlit", "run", "chatbot_app.py", \
+    "--server.port=8501", \
+    "--server.address=0.0.0.0", \
+    "--server.headless=true", \
+    "--server.fileWatcherType=none", \
+    "--browser.gatherUsageStats=false"]
