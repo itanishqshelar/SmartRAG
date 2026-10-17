@@ -1,236 +1,121 @@
-# SmartRAG - Intelligent Multimodal RAG System
+# SmartRAG
 
-A production-ready RAG system enabling intelligent conversations with documents, images, and audio files. Built with local-first AI models for complete privacy and offline operation.
+Chat with your documents, images and audio, privately. SmartRAG indexes your files locally and answers questions with inline citations that link back to the exact source, using local models through [Ollama](https://ollama.com). No data leaves your machine.
 
-## Quick Start
+## Features
 
-```bash
-# Standard deployment
-docker-compose up -d
-
-# Access at http://localhost:8501
-```
-
-## Core Features
-
-**Multimodal Processing**
-
-- Documents: PDF, DOCX, TXT, MD with intelligent chunking
-- Images: OCR + visual understanding via BLIP
-- Audio: Automatic transcription with Whisper
-
-**Local AI Stack**
-
-- Ollama (Llama 3.1 8B) for generation
-- Nomic Embed Text (768-dim) for embeddings
-- ChromaDB for vector storage
-- Complete offline operation
-
-**Production Ready**
-
-- Docker deployment with multi-stage builds
-- Non-root user execution
-- Health checks and auto-healing
-- Resource management and monitoring
-- Security hardening included
-
-## Technology Stack
-
-| Component      | Technology                  |
-| -------------- | --------------------------- |
-| **LLM**        | Llama 3.1 8B via Ollama     |
-| **Embeddings** | Nomic Embed Text (768-dim)  |
-| **Vector DB**  | ChromaDB / FAISS            |
-| **Vision**     | BLIP + CLIP + Tesseract OCR |
-| **Audio**      | OpenAI Whisper (base)       |
-| **UI**         | Streamlit                   |
-| **Storage**    | SQLite3                     |
+- **Multimodal ingestion**: PDF, DOCX, TXT and Markdown; images via Tesseract OCR and BLIP captioning; audio via Whisper transcription
+- **Grounded answers**: streamed responses with numbered citations; click a citation to open the source at the cited page
+- **Library management**: drag-and-drop uploads, previews, deletion, and scoping a chat to selected documents
+- **Voice input**: dictate questions; they're transcribed locally with Whisper
+- **Conversations**: multiple chats with follow-up context, saved in your browser
 
 ## Architecture
 
-<img width="1600" height="676" alt="image" src="https://github.com/user-attachments/assets/b4e96e9f-d797-409e-be6b-ceb295e91615" />
-
-## Installation
-
-### Docker (Recommended)
-
-```bash
-git clone https://github.com/itanishqshelar/SmartRAG.git
-cd SmartRAG/docker
-
-# Development
-docker-compose up -d
-
-# Production with full stack (PostgreSQL, Redis, Nginx)
-docker-compose -f docker-compose.prod.yml up -d
+```
+frontend/  (Next.js, port 3000)  ──HTTP──▶  api.py  (FastAPI, port 8000)
+                                               │
+                                     multimodal_rag/
+                                       ├── processors/   PDF · DOCX · text · image (OCR + BLIP) · audio (Whisper)
+                                       ├── vector_store  ChromaDB, embeddings from Ollama (nomic-embed-text)
+                                       ├── llm           Ollama chat (llama3.1:8b)
+                                       └── documents     uploaded files + SQLite registry (./data)
 ```
 
-### Local Setup
+## Local setup
+
+**Prerequisites**
+
+- Python 3.10–3.12, Node.js 20+
+- [Ollama](https://ollama.com/download), then pull the models:
+  ```bash
+  ollama pull llama3.1:8b
+  ollama pull nomic-embed-text
+  ```
+- [Tesseract](https://github.com/UB-Mannheim/tesseract/wiki) (image OCR) and [ffmpeg](https://ffmpeg.org/download.html) (audio)
+  - Windows: `winget install UB-Mannheim.TesseractOCR Gyan.FFmpeg`
+  - macOS: `brew install tesseract ffmpeg`
+  - Ubuntu: `sudo apt install tesseract-ocr ffmpeg`
+
+**Install**
 
 ```bash
-# Install dependencies
+python -m venv .venv
+# Windows: .venv\Scripts\activate    macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
+cd frontend && npm install
+```
 
-# Install Ollama and models
-ollama pull llama3.1:8b
-ollama pull nomic-embed-text
+**Run**
 
-# Install system dependencies
-# macOS: brew install tesseract ffmpeg
-# Ubuntu: apt-get install tesseract-ocr ffmpeg
-# Windows: Download from GitHub releases
+```bash
+python start.py
+```
 
-# Run application
-streamlit run chatbot_app.py
+This starts the API on http://localhost:8000 and the web app on http://localhost:3000. To run them separately:
+
+```bash
+uvicorn api:app --reload --port 8000   # backend
+cd frontend && npm run dev             # frontend
+```
+
+The image captioning model (~1 GB) and Whisper model (~140 MB) are downloaded from Hugging Face the first time you upload an image or audio file.
+
+## Docker
+
+```bash
+cd docker
+docker compose up -d --build
+```
+
+Open http://localhost:3000. The first start pulls the Ollama models (~5 GB). To use an Ollama instance already running on the host instead:
+
+```bash
+SMARTRAG_OLLAMA_HOST=http://host.docker.internal:11434 docker compose up -d --build backend frontend
 ```
 
 ## Configuration
 
-SmartRAG uses a single `config.yaml` with Pydantic validation:
-
-```yaml
-models:
-  llm_model: "llama3.1:8b"
-  embedding_model: "nomic-embed-text"
-  vision_model: "Salesforce/blip-image-captioning-base"
-  whisper_model: "base"
-
-vector_store:
-  type: "chromadb"
-  embedding_dimension: 768
-
-processing:
-  chunk_size: 1000
-  chunk_overlap: 200
-  ocr_enabled: true
-
-generation:
-  temperature: 0.7
-  max_tokens: 2000
-  context_window: 4096
-```
-
-Override via environment variables:
+Settings live in [`config.yaml`](config.yaml). Any value can be overridden with an environment variable named `SMARTRAG_<SECTION>__<KEY>`:
 
 ```bash
-export SMARTRAG_LLM_MODEL=llama2:7b
-export SMARTRAG_TEMPERATURE=0.5
+SMARTRAG_MODELS__LLM_MODEL=llama3.2:3b
+SMARTRAG_RETRIEVAL__TOP_K=8
+SMARTRAG_GENERATION__TEMPERATURE=0.3
 ```
 
-## Usage
+The frontend reads `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`).
 
-**Web Interface**
+## API
 
-1. Upload files via drag-and-drop
-2. Ask questions about your content
-3. View source documents inline
-4. Manage chat history and files
+Interactive docs: http://localhost:8000/docs
 
-**Python API**
+| Method   | Endpoint                    | Description                                              |
+| -------- | --------------------------- | -------------------------------------------------------- |
+| `GET`    | `/api/health`               | Ollama/model status, counts, supported file types        |
+| `GET`    | `/api/documents`            | List documents                                           |
+| `POST`   | `/api/documents`            | Upload and index a file (multipart `file`)               |
+| `GET`    | `/api/documents/{id}/file`  | Original file                                            |
+| `DELETE` | `/api/documents/{id}`       | Delete a document and its vectors                        |
+| `DELETE` | `/api/documents`            | Delete everything                                        |
+| `POST`   | `/api/chat`                 | Ask a question; streams NDJSON (`sources`, `token`, `done`/`error`) |
+| `POST`   | `/api/transcribe`           | Speech-to-text for an audio file                         |
+
+## Python usage
 
 ```python
-from multimodal_rag.system import MultimodalRAGSystem
+from multimodal_rag import RAGSystem
 
-system = MultimodalRAGSystem()
+rag = RAGSystem()
+rag.ingest_file("report.pdf")
+rag.ingest_file("whiteboard.png")
 
-# Ingest content
-system.ingest_file("document.pdf")
-system.ingest_file("screenshot.png")
-system.ingest_file("recording.mp3")
-
-# Query with context
-response = system.query("Summarize the key points")
+response = rag.query("What are the action items?")
 print(response.answer)
+for source in response.sources:
+    print(source.index, source.filename, source.page)
 ```
-
-**Batch Processing**
-
-```python
-# Process directories
-results = system.ingest_directory("./docs/", recursive=True)
-print(f"Processed {len(results)} files")
-```
-
-## Project Structure
-
-```
-smartrag/
-├── chatbot_app.py              # Streamlit application
-├── config.yaml                 # Configuration
-├── requirements.txt            # Dependencies
-├── multimodal_rag/
-│   ├── system.py              # RAG orchestrator
-│   ├── processors/            # File type handlers
-│   │   ├── document_processor.py
-│   │   ├── image_processor.py
-│   │   └── audio_processor.py
-│   └── vector_stores/         # DB implementations
-│       ├── chroma_store.py
-│       └── faiss_store.py
-├── docker/                    # Production deployment
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   └── docker-compose.prod.yml
-└── tests/                     # Test suite
-```
-
-## Deployment Options
-
-**Standard** - All-in-one container with Ollama
-
-```bash
-docker-compose up -d
-```
-
-**Lightweight** - External Ollama on host
-
-```bash
-docker-compose -f docker-compose.lite.yml up -d
-```
-
-**Production** - Full stack with PostgreSQL, Redis, Nginx
-
-```bash
-docker-compose -f docker-compose.prod.yml up -d
-```
-
-## Development
-
-```bash
-# Run tests
-pytest tests/
-
-# Code formatting
-black multimodal_rag/ tests/
-
-# Linting
-flake8 multimodal_rag/ tests/
-```
-
-## Performance
-
-- **Image size**: 4.2GB 
-- **Memory**: 4-8GB recommended
-- **CPU**: 2-4 cores recommended
-- **Startup time**: ~90s (includes model downloads)
-- **Query latency**: <3s typical
-
-## Security
-
-- Local inference - no external API calls
-- Non-root container execution
-- File size limits enforced (50MB default)
-- No privilege escalation
-- Security headers in production setup
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-Built with ChromaDB, Ollama, Hugging Face Transformers, OpenAI Whisper, and Tesseract OCR.
-
----
-
-**SmartRAG** - Local-first multimodal AI for document intelligence.
+MIT, see [LICENSE](LICENSE).

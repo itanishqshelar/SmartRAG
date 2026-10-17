@@ -1,86 +1,75 @@
 #!/usr/bin/env python3
 """
-SmartRAG - Application Launcher
-Validates environment and starts the SmartRAG web interface
+Start SmartRAG for local development: FastAPI backend (port 8000) + Next.js frontend (port 3000).
+
+    python start.py
 """
 
+import os
+import shutil
+import signal
 import subprocess
 import sys
-import os
+import time
+import urllib.request
 from pathlib import Path
 
-def check_environment():
-    """Pre-flight checks before starting."""
-    errors = []
-    
-    # Check if we're in the right directory
-    if not Path("chatbot_app.py").exists():
-        errors.append("❌ chatbot_app.py not found. Run this script from the project root directory.")
-    
-    # Check if config exists
-    if not Path("config.yaml").exists():
-        errors.append("❌ config.yaml not found. Configuration file is required.")
-    
-    # Check if requirements are installed
-    try:
-        import streamlit
-    except ImportError:
-        errors.append("❌ Streamlit not installed. Run: pip install -r requirements.txt")
-    
-    return errors
+ROOT = Path(__file__).resolve().parent
+FRONTEND = ROOT / "frontend"
+VENV_PYTHON = ROOT / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
 
-def main():
-    """Start the SmartRAG web application."""
-    print("🚀 Starting SmartRAG Multimodal ChatBot...")
-    print("=" * 60)
-    
-    # Run pre-flight checks
-    errors = check_environment()
-    if errors:
-        print("\n⚠️  Pre-flight checks failed:\n")
-        for error in errors:
-            print(f"   {error}")
-        print("\n� Fix the issues above and try again.")
-        sys.exit(1)
-    
-    print("✅ Environment validated")
-    print(f"�📁 Working directory: {os.getcwd()}")
-    print("🌐 Web interface: http://localhost:8501")
-    print("🤖 Model: Llama 3.1 8B via Ollama (local)")
-    print("🔒 Privacy: Completely OFFLINE")
-    print("")
-    print("� Instructions:")
-    print("   1. The app will open in your default browser")
-    print("   2. Upload documents using the sidebar")
-    print("   3. Start chatting with your documents!")
-    print("   4. Press Ctrl+C to stop the server")
-    print("")
-    print("=" * 60)
-    print("")
-    
+
+def ollama_running(host: str = "http://localhost:11434") -> bool:
     try:
-        # Start the Streamlit chatbot app
-        subprocess.run(
-            [sys.executable, "-m", "streamlit", "run", "chatbot_app.py", 
-             "--server.port=8501",
-             "--server.address=localhost"],
-            check=True
-        )
+        urllib.request.urlopen(f"{host}/api/tags", timeout=2)
+        return True
+    except OSError:
+        return False
+
+
+def main() -> None:
+    # The system interpreter may have incompatible packages; always prefer the project venv
+    python = str(VENV_PYTHON) if VENV_PYTHON.exists() else sys.executable
+    # On Windows, `npm` alone can resolve to the extensionless shell script, which can't be executed directly
+    npm = (os.name == "nt" and shutil.which("npm.cmd")) or shutil.which("npm")
+    if not npm:
+        sys.exit("npm not found. Install Node.js 20+ from https://nodejs.org")
+
+    if not ollama_running():
+        print("⚠️  Ollama is not reachable at http://localhost:11434. Start it with `ollama serve`.\n")
+
+    if not (FRONTEND / "node_modules").exists():
+        print("📦 Installing frontend dependencies...")
+        subprocess.run([npm, "install"], cwd=FRONTEND, check=True)
+
+    procs = []
+    try:
+        procs.append(subprocess.Popen([python, "-m", "uvicorn", "api:app", "--reload", "--port", "8000"], cwd=ROOT))
+        procs.append(subprocess.Popen([npm, "run", "dev"], cwd=FRONTEND))
+        print("\n🚀 SmartRAG is starting: http://localhost:3000  (API: http://localhost:8000/docs)\n")
+        while all(p.poll() is None for p in procs):
+            time.sleep(0.5)
     except KeyboardInterrupt:
-        print("\n\n🛑 SmartRAG stopped by user")
-    except subprocess.CalledProcessError as e:
-        print(f"\n❌ Error starting application: {e}")
-        print("\n🔧 Troubleshooting:")
-        print("   1. Check if Ollama is running: ollama list")
-        print("   2. Verify Python packages: pip install -r requirements.txt")
-        print("   3. Check logs in ./logs/ for detailed errors")
-        sys.exit(1)
-    except Exception as e:
-        print(f"\n❌ Unexpected error: {e}")
-        print("\n🔧 Make sure you have:")
-        print("   1. Installed requirements: pip install -r requirements.txt")
-        print("   2. Ollama running with required models")
-        sys.exit(1)
+        pass
+    finally:
+        for p in procs:
+            stop(p)
+        print("\n🛑 SmartRAG stopped")
+
+
+def stop(proc: subprocess.Popen) -> None:
+    if proc.poll() is not None:
+        return
+    if os.name == "nt":
+        # npm/uvicorn spawn child processes; kill the whole tree
+        subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)], capture_output=True)
+    else:
+        proc.send_signal(signal.SIGINT)
+    try:
+        proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+
 
 if __name__ == "__main__":
     main()

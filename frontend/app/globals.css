@@ -1,0 +1,186 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #f7f7f8;
+  --panel: #ffffff;
+  --elevated: #f1f1f4;
+  --hover: rgba(0, 0, 0, 0.045);
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.14);
+  --fg: #18181b;
+  --muted: #6b6b76;
+  --subtle: #a1a1aa;
+  --accent: #5b4cf0;
+  --accent-soft: rgba(91, 76, 240, 0.1);
+  --accent-fg: #ffffff;
+  --danger: #dc2626;
+  --success: #16a34a;
+  --code-bg: #f4f4f6;
+}
+
+.dark {
+  --bg: #0a0a0c;
+  --panel: #111114;
+  --elevated: #18181d;
+  --hover: rgba(255, 255, 255, 0.05);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --fg: #ececf1;
+  --muted: #8e8e9a;
+  --subtle: #5c5c66;
+  --accent: #8b7dff;
+  --accent-soft: rgba(139, 125, 255, 0.14);
+  --accent-fg: #0a0a0c;
+  --danger: #f87171;
+  --success: #4ade80;
+  --code-bg: #16161b;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-elevated: var(--elevated);
+  --color-hover: var(--hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-fg);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --animate-fade-in: fade-in 0.25s ease-out both;
+  --animate-slide-up: slide-up 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-slide-in-right: slide-in-right 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-pulse-dot: pulse-dot 1.4s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+}
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+}
+@keyframes pulse-dot {
+  0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* Blinking caret appended to a streaming answer */
+.streaming-caret > :last-child::after {
+  content: "";
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  border-radius: 2px;
+  background: var(--accent);
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+
+/* Markdown answers */
+.prose-chat {
+  line-height: 1.7;
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+.prose-chat > * + * { margin-top: 0.85em; }
+.prose-chat h1, .prose-chat h2, .prose-chat h3, .prose-chat h4 {
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 1.4em;
+}
+.prose-chat h1 { font-size: 1.35em; }
+.prose-chat h2 { font-size: 1.2em; }
+.prose-chat h3 { font-size: 1.05em; }
+.prose-chat ul, .prose-chat ol { padding-left: 1.4em; }
+.prose-chat ul { list-style: disc; }
+.prose-chat ol { list-style: decimal; }
+.prose-chat li + li { margin-top: 0.3em; }
+.prose-chat li::marker { color: var(--subtle); }
+.prose-chat strong { font-weight: 600; }
+.prose-chat a:not([data-citation]) {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-chat blockquote {
+  border-left: 3px solid var(--border-strong);
+  padding-left: 1em;
+  color: var(--muted);
+}
+.prose-chat code {
+  font-family: var(--font-geist-mono);
+  font-size: 0.85em;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.1em 0.35em;
+}
+.prose-chat pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.9em 1.1em;
+  overflow-x: auto;
+  font-size: 0.85em;
+  line-height: 1.6;
+}
+.prose-chat pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: inherit;
+}
+.prose-chat table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  display: block;
+  overflow-x: auto;
+}
+.prose-chat th, .prose-chat td {
+  border: 1px solid var(--border);
+  padding: 0.45em 0.75em;
+  text-align: left;
+}
+.prose-chat th {
+  background: var(--elevated);
+  font-weight: 600;
+}
+.prose-chat hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+}
