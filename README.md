@@ -12,15 +12,8 @@ Chat with your documents, images and audio, privately. SmartRAG indexes your fil
 
 ## Architecture
 
-```
-frontend/  (Next.js, port 3000)  ──HTTP──▶  api.py  (FastAPI, port 8000)
-                                               │
-                                     multimodal_rag/
-                                       ├── processors/   PDF · DOCX · text · image (OCR + BLIP) · audio (Whisper)
-                                       ├── vector_store  ChromaDB, embeddings from Ollama (nomic-embed-text)
-                                       ├── llm           Ollama chat (llama3.1:8b)
-                                       └── documents     uploaded files + SQLite registry (./data)
-```
+<img width="1600" height="676" alt="image" src="https://github.com/user-attachments/assets/678d61a7-5f73-40eb-ad5e-b8c20ead69ae" />
+
 
 ## Local setup
 
