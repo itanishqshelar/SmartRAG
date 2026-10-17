@@ -1,31 +1,5 @@
-"""
-Processor package initialization.
-"""
+from .audio_processor import AudioProcessor
+from .document_processor import DOCXProcessor, PDFProcessor, TextProcessor
+from .image_processor import ImageProcessor
 
-from .document_processor import (
-    TextProcessor,
-    PDFProcessor, 
-    DOCXProcessor,
-    DocumentProcessorManager
-)
-
-from .image_processor import (
-    ImageProcessor,
-    ImageProcessorManager
-)
-
-from .audio_processor import (
-    AudioProcessor,
-    AudioProcessorManager
-)
-
-__all__ = [
-    'TextProcessor',
-    'PDFProcessor',
-    'DOCXProcessor', 
-    'DocumentProcessorManager',
-    'ImageProcessor',
-    'ImageProcessorManager',
-    'AudioProcessor',
-    'AudioProcessorManager'
-]
+__all__ = ["AudioProcessor", "DOCXProcessor", "ImageProcessor", "PDFProcessor", "TextProcessor"]

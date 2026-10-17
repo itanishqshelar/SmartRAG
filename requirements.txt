@@ -1,43 +1,27 @@
-# Core RAG and ML libraries
-chromadb>=0.4.0
-transformers>=4.35.0  # For BLIP image captioning and model utilities
-torch>=2.0.0
-torchvision>=0.15.0
-sentence-transformers>=2.2.0  # For text embeddings
-accelerate>=0.20.0  # For model optimization
+# API
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
 
-# Configuration management
-pydantic>=2.0.0  # For config validation and schema
-pydantic-settings>=2.0.0  # For environment variable support
-
-# Traditional system requirements
-ollama>=0.1.0  # For Llama 3.1 8B local inference
-pytesseract>=0.3.10  # For OCR with Tesseract
-opencv-python>=4.8.0  # For image processing
-
-# Image and vision
-Pillow>=10.0.0
-requests>=2.31.0
-
-# Document processing
-PyPDF2>=3.0.1
-python-docx>=1.0.0
-pdfplumber>=0.9.0
-python-pptx>=0.6.21
-
-# Audio processing (keeping Whisper)
-openai-whisper>=20231117
-pydub>=0.25.1
-librosa>=0.10.0
-
-# Web interface
-fastapi>=0.104.0
-uvicorn>=0.24.0
-python-multipart>=0.0.6
-streamlit>=1.28.0
-
-# Utilities
-numpy>=1.24.0
-tqdm>=4.65.0
+# Configuration
+pydantic>=2.6.0
+pydantic-settings>=2.3.0
 pyyaml>=6.0.0
-requests>=2.31.0
+
+# LLM, embeddings and vector store
+ollama>=0.4.0
+chromadb>=0.5.0
+
+# Documents
+pdfplumber>=0.10.0
+python-docx>=1.1.0
+
+# Images (OCR needs the Tesseract binary installed separately)
+Pillow>=10.0.0
+pytesseract>=0.3.10
+transformers>=4.40.0
+torch>=2.2.0
+torchvision>=0.17.0
+
+# Audio (needs ffmpeg installed separately)
+openai-whisper>=20231117

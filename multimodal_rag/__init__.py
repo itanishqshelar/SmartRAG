@@ -1,30 +1,9 @@
 """
-Initialization file for the multimodal_rag package.
+SmartRAG: local-first multimodal retrieval-augmented generation.
 """
 
-from .base import (
-    DocumentChunk,
-    ProcessingResult,
-    RetrievalResult,
-    BaseProcessor,
-    BaseVectorStore,
-    BaseEmbedding,
-    BaseLLM,
-    QueryRequest,
-    QueryResponse
-)
+from .config import SmartRAGConfig, load_config
+from .documents import Document
+from .system import IngestionError, QueryResponse, RAGSystem, Source
 
-__version__ = "1.0.0"
-__author__ = "SmartRAG Team"
-
-__all__ = [
-    "DocumentChunk",
-    "ProcessingResult", 
-    "RetrievalResult",
-    "BaseProcessor",
-    "BaseVectorStore",
-    "BaseEmbedding",
-    "BaseLLM",
-    "QueryRequest",
-    "QueryResponse"
-]
+__all__ = ["Document", "IngestionError", "QueryResponse", "RAGSystem", "SmartRAGConfig", "Source", "load_config"]

@@ -1,146 +1,72 @@
+# SmartRAG: Ollama + FastAPI backend + Next.js frontend
+#
+#   cd docker && docker compose up -d --build
+#   open http://localhost:3000
+#
+# Already running Ollama on the host? Start only the app services and point the backend at it:
+#   SMARTRAG_OLLAMA_HOST=http://host.docker.internal:11434 docker compose up -d --build backend frontend
 
 services:
-  smartrag:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    # Uncomment to use an NVIDIA GPU
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # One-shot job that pulls the models on first start (cached in the ollama_models volume)
+  ollama-pull:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_HOST: ollama:11434
+    entrypoint: ["sh", "-c", "ollama pull llama3.1:8b && ollama pull nomic-embed-text"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-      args:
-        - BUILDKIT_INLINE_CACHE=1
-    image: smartrag:latest
-    container_name: smartrag-app
     ports:
-      - "11434:11434"  # Ollama
-      - "8000:8000"  # FastAPI
-    volumes:
-      # Persist vector database
-      - smartrag_vector_db:/app/vector_db
-      # Persist user data
-      - smartrag_user_data:/app/user_data
-      # Persist uploaded files
-      - smartrag_uploads:/app/temp_uploads
-      # Persist logs
-      - smartrag_logs:/app/logs
-      # Persist SQLite database
-      - smartrag_db:/app/db
-      # Ollama models persistence (updated path for non-root user)
-      - ollama_models:/home/smartrag/.ollama
+      - "8000:8000"
     environment:
-      - OLLAMA_HOST=http://localhost:11434
-      - PYTHONUNBUFFERED=1
-      - MAX_FILE_SIZE_MB=50
-      # Optional: Add your custom config overrides
-      # - SMARTRAG_LLM_MODEL=llama3.1:8b
-      # - SMARTRAG_DEBUG=false
+      SMARTRAG_MODELS__OLLAMA_HOST: ${SMARTRAG_OLLAMA_HOST:-http://ollama:11434}
+      SMARTRAG_API__CORS_ORIGINS: '["http://localhost:3000"]'
+    volumes:
+      - smartrag_data:/app/data
+      - smartrag_vectors:/app/vector_db
+      - hf_cache:/home/smartrag/.cache
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s  # Increased for model downloads
-    shm_size: '2gb'  # Shared memory for ML models
-    security_opt:
-      - no-new-privileges:true
-    deploy:
-      resources:
-        limits:
-          cpus: '4'
-          memory: 8G  # Adjust based on your system
-        reservations:
-          cpus: '2'
-          memory: 4G
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - smartrag-network
-
-# Optional: Separate PostgreSQL for production (uncomment if needed)
-#  postgres:
-#    image: postgres:15-alpine
-#    container_name: smartrag-db
-#    environment:
-#      - POSTGRES_DB=smartrag
-#      - POSTGRES_USER=smartrag
-#      - POSTGRES_PASSWORD=changeme  # Use secrets in production!
-#    volumes:
-#      - postgres_data:/var/lib/postgresql/data
-#    ports:
-#      - "5432:5432"
-#    restart: unless-stopped
-#    healthcheck:
-#      test: ["CMD-SHELL", "pg_isready -U smartrag"]
-#      interval: 10s
-#      timeout: 5s
-#      retries: 5
-#    networks:
-#      - smartrag-network
-
-# Optional: Redis for caching (uncomment if needed)
-#  redis:
-#    image: redis:7-alpine
-#    container_name: smartrag-cache
-#    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy allkeys-lru
-#    volumes:
-#      - redis_data:/data
-#    ports:
-#      - "6379:6379"
-#    restart: unless-stopped
-#    healthcheck:
-#      test: ["CMD", "redis-cli", "ping"]
-#      interval: 10s
-#      timeout: 3s
-#      retries: 5
-#    networks:
-#      - smartrag-network
-
-# Optional: Nginx reverse proxy (uncomment for production)
-#  nginx:
-#    image: nginx:alpine
-#    container_name: smartrag-proxy
-#    ports:
-#      - "80:80"
-#      - "443:443"
-#    volumes:
-#      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-#      - ./ssl:/etc/nginx/ssl:ro
-#    depends_on:
-#      - smartrag
-#    restart: unless-stopped
-#    networks:
-#      - smartrag-network
 
   frontend:
     build:
       context: ../frontend
-      dockerfile: Dockerfile
-    container_name: smartrag-frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
     ports:
       - "3000:3000"
     depends_on:
-      - smartrag
+      - backend
     restart: unless-stopped
 
 volumes:
   ollama_models:
-    driver: local
-  smartrag_vector_db:
-    driver: local
-  smartrag_user_data:
-    driver: local
-  smartrag_uploads:
-    driver: local
-  smartrag_logs:
-    driver: local
-  smartrag_db:
-    driver: local
-#  postgres_data:
-#    driver: local
-#  redis_data:
-#    driver: local
-
-networks:
-  smartrag-network:
-    driver: bridge
+  smartrag_data:
+  smartrag_vectors:
+  hf_cache:
